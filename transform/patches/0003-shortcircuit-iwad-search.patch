@@ -1,0 +1,43 @@
+diff --git a/transform/doomgeneric/d_iwad.c b/transform/doomgeneric/d_iwad.c
+index 508cc61..e450a6d 100644
+--- a/transform/doomgeneric/d_iwad.c
++++ b/transform/doomgeneric/d_iwad.c
+@@ -32,6 +32,10 @@
+ #include "w_wad.h"
+ #include "z_zone.h"
+ 
++#ifdef DOOMWAD_FROM_MEMORY
++#include "doomstat.h"
++#endif
++
+ static const iwad_t iwads[] =
+ {
+     { "doom2.wad",    doom2,     commercial, "Doom II" },
+@@ -701,6 +705,19 @@ char *D_TryFindWADByName(char *filename)
+ 
+ char *D_FindIWAD(int mask, GameMission_t *mission)
+ {
++#ifdef DOOMWAD_FROM_MEMORY
++    // The WAD is baked into the binary, so skip disk-based discovery that
++    // would otherwise fopen() candidate filenames on the (empty) WASI FS.
++    // Hardcode shareware Doom 1; W_AddFile ignores the returned path.
++    (void)mask;
++    gamemode = shareware;
++    gamemission = doom;
++    if (mission != NULL)
++    {
++        *mission = doom;
++    }
++    return "doom1.wad";
++#else
+     char *result;
+     char *iwadfile;
+     int iwadparm;
+@@ -748,6 +765,7 @@ char *D_FindIWAD(int mask, GameMission_t *mission)
+     }
+ 
+     return result;
++#endif /* DOOMWAD_FROM_MEMORY */
+ }
+ 
+ // Find all IWADs in the IWAD search path matching the given mask.

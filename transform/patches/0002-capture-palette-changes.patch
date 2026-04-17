@@ -1,0 +1,14 @@
+diff --git a/transform/doomgeneric/i_video.c b/transform/doomgeneric/i_video.c
+index 84bebde..df77eb6 100644
+--- a/transform/doomgeneric/i_video.c
++++ b/transform/doomgeneric/i_video.c
+@@ -387,6 +387,9 @@ void I_ReadScreen (byte* scr)
+ 
+ void I_SetPalette (byte* palette)
+ {
++	extern void doom_frame_capture_on_palette(const uint8_t *palette);
++	doom_frame_capture_on_palette((const uint8_t *)palette);
++
+ 	int i;
+ 	//col_t* c;
+ 

@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  redpanda:
+    image: redpandadata/redpanda-dev:latest
+    container_name: doom-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --overprovisioned
+      # Two listeners: INTERNAL for inter-container traffic, EXTERNAL
+      # for tools on the host (rpk, kcat, franz-go producers, etc).
+      - --kafka-addr=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092
+      - --advertise-kafka-addr=INTERNAL://redpanda:9092,EXTERNAL://localhost:19092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=redpanda:8082
+      - --schema-registry-addr=0.0.0.0:8081
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+    ports:
+      - "9092:9092"       # Kafka API (INTERNAL listener)
+      - "19092:19092"     # Kafka API (EXTERNAL listener, advertised as localhost:19092)
+      - "9644:9644"       # Admin API
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+      - ./deploy/bootstrap.yaml:/etc/redpanda/.bootstrap.yaml:ro
+    healthcheck:
+      test: ["CMD", "/opt/redpanda/bin/rpk", "cluster", "health"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  init:
+    image: redpandadata/redpanda:latest   # stock: needs /bin/bash for init.sh
+    container_name: doom-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/deploy/init.sh"]
+    volumes:
+      - ./deploy:/deploy:ro
+      - ./transform/build:/transform:ro
+    environment:
+      RPK_BROKERS: redpanda:9092
+      RPK_ADMIN_HOSTS: redpanda:9644
+      DOOM_MODE: ${DOOM_MODE:-sync}
+
+  bridge:
+    build: ./bridge
+    container_name: doom-bridge
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "8090:8080"
+    environment:
+      BRIDGE_BROKERS: redpanda:9092
+      # Topics depend on MODE. sync uses 'doom' for both; async uses
+      # 'doom.input' and 'doom.frames'. The Makefile sets these for
+      # you via `make up MODE=sync|async`.
+      BRIDGE_INPUT_TOPIC:  ${DOOM_INPUT_TOPIC:-doom}
+      BRIDGE_FRAMES_TOPIC: ${DOOM_FRAMES_TOPIC:-doom}
+      BRIDGE_LISTEN: ":8080"
+      # Dump every Nth record per direction to /dump/{in,out}.jsonl.
+      # Leave DUMP_DIR empty to disable.
+      BRIDGE_DUMP_DIR: /dump
+      BRIDGE_SAMPLE_EVERY: "10"
+    volumes:
+      - ./dump:/dump
+    restart: unless-stopped
+
+volumes:
+  redpanda-data:

@@ -1,0 +1,6 @@
+FROM ghcr.io/webassembly/wasi-sdk:wasi-sdk-22
+
+# wasi-sdk base image is minimal; install xxd for the WAD embedder.
+RUN apt-get update && apt-get install -y xxd && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src

@@ -1,0 +1,13 @@
+# Cluster-wide properties applied on first boot.
+# Mounted into the Redpanda container as /etc/redpanda/.bootstrap.yaml.
+data_transforms_enabled: true
+# Run transforms synchronously on the produce path instead of as a
+# post-write async worker. This branch (ai-jam/produce-path-wasm) is
+# exactly the feature we want for an interactive workload like Doom —
+# one produce -> one transform invocation -> output committed in the
+# same operation.
+data_transforms_produce_path_enabled: true
+# Doom's wasm module needs ~4.6 MiB minimum memory (73 pages * 64 KiB).
+# Bump the per-function limit and per-core reservation accordingly.
+data_transforms_per_function_memory_limit: 16777216  # 16 MiB
+data_transforms_per_core_memory_reservation: 67108864  # 64 MiB

@@ -1,0 +1,25 @@
+# build artifacts
+transform/build/
+transform/src/wad_embedded.h
+transform/src/wad_embedded.bin
+transform/tests/*.out
+
+# Vendored at setup time — not committed (upstream is GPL-2.0 and
+# lives at github.com/ozkl/doomgeneric). Run `make setup` to fetch
+# and apply our patches from transform/patches/.
+transform/doomgeneric/
+
+# Redpanda C++ transform SDK — Apache-2.0, fetched from the same
+# Redpanda branch we build the broker from. See scripts/setup.sh.
+transform/include/redpanda/
+transform/include/redpanda_transform_sdk/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# docker volumes
+data/
+/dump/

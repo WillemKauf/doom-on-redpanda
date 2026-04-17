@@ -1,0 +1,96 @@
+diff --git a/transform/doomgeneric/w_file_stdc.c b/transform/doomgeneric/w_file_stdc.c
+index 829e960..2a3a13b 100644
+--- a/transform/doomgeneric/w_file_stdc.c
++++ b/transform/doomgeneric/w_file_stdc.c
+@@ -16,6 +16,8 @@
+ //	WAD I/O functions.
+ //
+ 
++#if !defined(DOOMWAD_FROM_MEMORY)
++
+ #include <stdio.h>
+ 
+ #include "m_misc.h"
+@@ -63,7 +65,7 @@ static void W_StdC_CloseFile(wad_file_t *wad)
+     Z_Free(stdc_wad);
+ }
+ 
+-// Read data from the specified position in the file into the 
++// Read data from the specified position in the file into the
+ // provided buffer.  Returns the number of bytes read.
+ 
+ size_t W_StdC_Read(wad_file_t *wad, unsigned int offset,
+@@ -86,7 +88,7 @@ size_t W_StdC_Read(wad_file_t *wad, unsigned int offset,
+ }
+ 
+ 
+-wad_file_class_t stdc_wad_file = 
++wad_file_class_t stdc_wad_file =
+ {
+     W_StdC_OpenFile,
+     W_StdC_CloseFile,
+@@ -94,3 +96,64 @@ wad_file_class_t stdc_wad_file =
+ };
+ 
+ 
++#else /* DOOMWAD_FROM_MEMORY */
++
++// Memory-backed WAD loader. Used in WASM builds (and host-native tests)
++// where the entire WAD is baked into the binary as a byte array. This
++// lets the transform run without WASI filesystem preopens.
++
++#include <stdlib.h>
++#include <string.h>
++
++#include "doomtype.h"
++#include "i_system.h"
++#include "m_misc.h"
++#include "w_file.h"
++#include "z_zone.h"
++
++extern const unsigned char doom_wad[];
++extern const unsigned long doom_wad_len;
++
++typedef struct {
++    wad_file_t wad;   // base class
++    // no extra fields: the entire WAD is at doom_wad[0..doom_wad_len]
++} memory_wad_file_t;
++
++extern wad_file_class_t stdc_wad_file;
++
++static wad_file_t *W_OpenFile_Mem(char *path)
++{
++    // path is ignored — there is only one WAD embedded in this build.
++    (void)path;
++    memory_wad_file_t *result =
++        Z_Malloc(sizeof(memory_wad_file_t), PU_STATIC, 0);
++    result->wad.file_class = &stdc_wad_file;
++    result->wad.mapped     = (byte *)doom_wad;
++    result->wad.length     = (unsigned int)doom_wad_len;
++    return &result->wad;
++}
++
++static void W_CloseFile_Mem(wad_file_t *wad)
++{
++    Z_Free(wad);
++}
++
++static size_t W_Read_Mem(wad_file_t *wad, unsigned int offset,
++                         void *buffer, size_t buffer_len)
++{
++    (void)wad;
++    if (offset >= doom_wad_len) return 0;
++    size_t remaining = (size_t)doom_wad_len - offset;
++    size_t to_read   = buffer_len < remaining ? buffer_len : remaining;
++    memcpy(buffer, doom_wad + offset, to_read);
++    return to_read;
++}
++
++wad_file_class_t stdc_wad_file =
++{
++    W_OpenFile_Mem,
++    W_CloseFile_Mem,
++    W_Read_Mem,
++};
++
++#endif /* DOOMWAD_FROM_MEMORY */
