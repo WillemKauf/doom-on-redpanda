@@ -137,8 +137,21 @@ smoke: ## Single-record round-trip smoke
 burst: ## 40-record burst
 	./tests/smoke_burst.sh
 
-bench: ## Measure WS round-trip latency (100 ticks)
-	@python3 tests/bench.py
+# tests/bench.py needs the `websockets` pypi package. Instead of pip-
+# installing into the host's system Python, we lazily materialise a
+# project-local venv at $(BENCH_VENV) on first use.
+BENCH_VENV       := .venv-bench
+BENCH_VENV_PY    := $(BENCH_VENV)/bin/python
+BENCH_VENV_STAMP := $(BENCH_VENV)/.installed
+
+$(BENCH_VENV_STAMP):
+	python3 -m venv $(BENCH_VENV)
+	$(BENCH_VENV)/bin/pip install --quiet --upgrade pip
+	$(BENCH_VENV)/bin/pip install --quiet websockets
+	@touch $@
+
+bench: $(BENCH_VENV_STAMP) ## Measure WS round-trip latency (100 ticks)
+	@$(BENCH_VENV_PY) tests/bench.py
 
 dump-clean: ## Truncate the sampled JSONL dumps
 	: > dump/in.jsonl
