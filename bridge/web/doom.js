@@ -33,8 +33,6 @@ const KEY = {
   ENTER:      13,
   ESCAPE:     27,
   TAB:        9,
-  Y:          0x79,
-  N:          0x6e,
 };
 
 // browser key → doom scancode
@@ -54,13 +52,17 @@ function mapKey(e) {
     case "Enter":      return KEY.ENTER;
     case "Escape":     return KEY.ESCAPE;
     case "Tab":        return KEY.TAB;
-    case "KeyY":       return KEY.Y;
-    case "KeyN":       return KEY.N;
     case "Digit1": case "Digit2": case "Digit3":
     case "Digit4": case "Digit5": case "Digit6":
     case "Digit7":
       return e.code.charCodeAt(5);  // '1'..'7' ascii
-    default: return 0;
+    default:
+      // Letter keys: doomgeneric's scancode for letters is the ASCII
+      // lowercase value. Forward them all so cheat codes (iddqd,
+      // idkfa, idclip, idbeholdv, idmus01, ...) and the y/n prompts
+      // both work without a per-letter case list.
+      if (e.code.startsWith("Key")) return e.code.charCodeAt(3) | 0x20;
+      return 0;
   }
 }
 
