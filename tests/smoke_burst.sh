@@ -53,8 +53,8 @@ trap 'rm -rf "$tmp"' EXIT
 for idx in 0 $(( N / 2 )) $(( N - 1 )); do
     off=$(( before + idx ))
     $RPK topic consume "$FRAMES_TOPIC" -o "$off" -n 1 --format '%v' > "$tmp/frame_$idx.bin"
-    bytes=$(stat -c %s "$tmp/frame_$idx.bin")
-    sha=$(sha256sum "$tmp/frame_$idx.bin" | cut -c1-16)
+    bytes=$(stat -c %s "$tmp/frame_$idx.bin" 2>/dev/null || stat -f %z "$tmp/frame_$idx.bin")
+    sha=$(shasum -a 256 "$tmp/frame_$idx.bin" | cut -c1-16)
     pp=$(xxd -p -l 1 -s 4 "$tmp/frame_$idx.bin")
     tick=$(xxd -p -l 4 "$tmp/frame_$idx.bin")
     echo "[burst] frame offset=$off  bytes=$bytes  tick_seq=0x$tick  palette_present=0x$pp  sha=$sha"
