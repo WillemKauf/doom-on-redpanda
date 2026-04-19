@@ -90,6 +90,21 @@ async mode: `make switch MODE=async`. The demo will still run against
 stock Redpanda, it'll just be unplayably stuttery. That's useful for
 demonstrating *why* produce-path matters, though.
 
+**Build fails with "does not depend on a module exporting …" errors?**
+The produce-path branch is a DNM branch that wasn't CI-tested on ARM,
+so some of its BUILD files carry incomplete dep declarations that clang
+catches only on non-x86_64 platforms (notably Apple Silicon Macs
+building inside Docker). Bypass the strict-deps layering check for the
+build:
+
+```bash
+BAZEL_EXTRA_FLAGS='--features=-layering_check' make broker-image
+```
+
+The binaries are semantically sound — `layering_check` is a build-
+hygiene lint, not a correctness gate. More knobs (cache reset, OOM
+recovery, etc.) in the macOS sizing notes below.
+
 ### Redpanda developers: skip the Docker wrapper
 
 If you already have a Redpanda source tree and a working bazel setup,
@@ -101,10 +116,43 @@ set `REDPANDA_FETCH=1`.
 
 ### macOS: Docker Desktop sizing
 
-Give Docker Desktop at least **16 GB RAM** and **60 GB disk** before
-running `make broker-image`. The bazel output base alone is ~30 GB
-cold. It lives in a Docker named volume called `rp-bazel-cache`; nuke
-it with `docker volume rm rp-bazel-cache` to reclaim the space.
+Give Docker Desktop **≥ 24 GB RAM** and **≥ 60 GB disk** for a smooth
+build. **16 GB is the absolute minimum** — Redpanda compile actions
+peak at 2–4 GB each and bazel's default `--jobs` scales with container
+cores, so allocations below ~24 GB can OOM-kill the bazel server
+mid-build.
+
+If your host is memory-constrained, cap parallelism before running
+`make broker-image`:
+
+```bash
+BAZEL_JOBS=2 make broker-image     # safe at 8 GB
+BAZEL_JOBS=4 make broker-image     # safe at 16 GB
+# or let bazel pick jobs itself from a RAM budget (MiB):
+BAZEL_RAM_MB=6000 make broker-image
+```
+
+If a previous build was OOM-killed or aborted mid-compile, the bazel
+action cache on the volume can end up inconsistent and reject correct
+source with strict-deps errors that don't match your BUILDs. Force a
+clean rebuild:
+
+```bash
+BAZEL_CLEAN=all make broker-image        # full rebuild, keeps deps
+BAZEL_CLEAN=expunge make broker-image    # also re-download deps
+```
+
+For any other one-off bazel flags (notably: disabling clang-modules
+strict-deps checks on a DNM branch that wasn't CI-tested on your
+platform), use `BAZEL_EXTRA_FLAGS`:
+
+```bash
+BAZEL_EXTRA_FLAGS='--features=-layering_check' make broker-image
+```
+
+The bazel output base lives in a Docker named volume called
+`rp-bazel-cache` (~30 GB cold). Nuke with `docker volume rm
+rp-bazel-cache` to reclaim the space.
 
 Click the canvas to give it keyboard focus, then `arrow keys` /
 `ctrl` / `space` / `enter`. Standard DOOM controls.
