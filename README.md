@@ -68,8 +68,9 @@ make setup
 #    github.com/redpanda-data/redpanda at branch ai-jam/produce-path-wasm
 #    into ../redpanda-src by default.
 #
-#    Requires bazel (bazelisk) and bazel/install-deps.sh (system deps).
-#    Skip this step if you only want to try MODE=async on stock Redpanda.
+#    Runs inside Docker — works on macOS and Linux, no host bazel
+#    required. Skip this step if you only want to try MODE=async on
+#    stock Redpanda.
 make broker-image
 
 # 4. Build the WASM transform. First build pulls the wasi-sdk image
@@ -88,6 +89,22 @@ xdg-open http://localhost:8090/ # Linux
 async mode: `make switch MODE=async`. The demo will still run against
 stock Redpanda, it'll just be unplayably stuttery. That's useful for
 demonstrating *why* produce-path matters, though.
+
+### Redpanda developers: skip the Docker wrapper
+
+If you already have a Redpanda source tree and a working bazel setup,
+you can build natively: `make broker-image-native REDPANDA_DIR=~/co/redpanda`.
+By default this uses whatever branch is currently checked out in
+`REDPANDA_DIR` — it won't touch your working state. To force-fetch the
+produce-path branch (as `make broker-image` does for fresh clones),
+set `REDPANDA_FETCH=1`.
+
+### macOS: Docker Desktop sizing
+
+Give Docker Desktop at least **16 GB RAM** and **60 GB disk** before
+running `make broker-image`. The bazel output base alone is ~30 GB
+cold. It lives in a Docker named volume called `rp-bazel-cache`; nuke
+it with `docker volume rm rp-bazel-cache` to reclaim the space.
 
 Click the canvas to give it keyboard focus, then `arrow keys` /
 `ctrl` / `space` / `enter`. Standard DOOM controls.
@@ -225,8 +242,10 @@ doom-on-redpanda/
 ```
 make help             show all targets
 make setup            one-time: fetch doomgeneric, apply patches, check WAD
-make broker-image     fetch + build redpandadata/redpanda-dev:latest
-                      (branch ai-jam/produce-path-wasm)
+make broker-image     build redpandadata/redpanda-dev:latest in Docker
+                      (cross-platform, default)
+make broker-image-native
+                      same, but bazel runs on the host (Redpanda devs)
 make rebuild-wasm     compile the transform, redeploy to the broker
 make rebuild-bridge   rebuild only the Go bridge container
 make up               start the stack in $(MODE)

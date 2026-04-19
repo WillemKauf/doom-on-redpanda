@@ -34,7 +34,7 @@ export DOOM_INPUT_TOPIC   := $(TOPIC_IN)
 export DOOM_FRAMES_TOPIC  := $(TOPIC_OUT)
 
 .PHONY: help setup up down stop restart reset switch \
-        rebuild-wasm rebuild-bridge wasm broker-image \
+        rebuild-wasm rebuild-bridge wasm broker-image broker-image-native \
         status logs smoke burst bench dump-clean check-setup dump-dir
 
 help: ## This help
@@ -47,12 +47,22 @@ help: ## This help
 setup: ## Fetch doomgeneric from upstream, apply patches, check WAD
 	./scripts/setup.sh
 
-# Fetch the Redpanda source at branch 'ai-jam/produce-path-wasm',
-# build it, and load the image as redpandadata/redpanda-dev:latest.
-# The script clones if REDPANDA_DIR doesn't exist, fetches if it does.
+# Fetch the Redpanda source at branch 'ai-jam/produce-path-wasm', build
+# the produce-path broker image, and load it as redpandadata/redpanda-dev:latest.
+#
+# `broker-image` runs the build inside a container (works on Mac +
+# Linux). `broker-image-native` runs bazel on the host — for Redpanda
+# developers who already have the toolchain set up.
+#
+# Both paths share scripts/lib-redpanda-src.sh: if REDPANDA_DIR already
+# exists the script leaves the checkout alone unless you also set
+# REDPANDA_FETCH=1 to fetch and reset to the produce-path branch.
 REDPANDA_DIR ?= ../redpanda-src
 
-broker-image: ## Fetch + build the produce-path Redpanda image into docker
+broker-image: ## Build the produce-path Redpanda image in Docker (Mac + Linux)
+	./scripts/build-broker-docker.sh "$(REDPANDA_DIR)"
+
+broker-image-native: ## Build natively on the host (Redpanda devs with bazel)
 	./scripts/build-broker.sh "$(REDPANDA_DIR)"
 
 # Internal: fail fast with a helpful message if the user skipped setup.

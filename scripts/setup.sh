@@ -133,19 +133,28 @@ else
     \033[1;33m!\033[0m  '$DEV_IMAGE' is NOT in your local docker.
 
     MODE=sync (produce-path transforms, ~1 ms round-trip) requires a
-    Redpanda build from the produce-path branch. Two options:
+    Redpanda build from the produce-path branch. Three options:
 
-    (a) Let us fetch + build it for you (recommended):
+    (a) Let us build it for you in Docker (recommended — works on
+        macOS and Linux, no host bazel required):
 
             make broker-image
 
         This clones github.com/redpanda-data/redpanda at branch
-        'ai-jam/produce-path-wasm' into ../redpanda-src (override with
-        REDPANDA_DIR=...) and runs bazel to build the image. Cold
-        builds take 30-90 minutes and need ~30 GB disk for bazel's
-        cache. Requires bazel + redpanda's install-deps.sh.
+        'ai-jam/produce-path-wasm' into ../redpanda-src (override
+        with REDPANDA_DIR=...) and runs bazel inside a container.
+        Cold builds take 30-90 minutes and need ~30 GB of docker
+        storage for a named bazel cache volume. On macOS, give
+        Docker Desktop >= 16 GB RAM and >= 60 GB disk.
 
-    (b) Skip it and run in post-write mode against stock Redpanda:
+    (b) Redpanda developers: build natively on the host instead:
+
+            make broker-image-native REDPANDA_DIR=~/co/redpanda
+
+        By default this leaves your checkout untouched. Set
+        REDPANDA_FETCH=1 to fetch+reset to the produce-path branch.
+
+    (c) Skip it and run in post-write mode against stock Redpanda:
 
             make switch MODE=async
 
@@ -160,6 +169,7 @@ log "setup complete"
 cat <<EOF
 
     next steps:
+      make broker-image    # build produce-path Redpanda (skip for async only)
       make rebuild-wasm    # compile the transform + redeploy
       make up              # start the docker-compose stack
       make bench           # measure pipeline round-trip latency
