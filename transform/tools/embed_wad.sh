@@ -31,4 +31,4 @@ cp "$WAD" "$TMP"
     | sed 's/unsigned int doom_wad_len/unsigned long doom_wad_len/' \
     > "$OUT"
 
-echo "wrote $OUT ($(stat -c %s "$WAD") bytes of WAD)"
+echo "wrote $OUT ($(stat -c %s "$WAD" 2>/dev/null || stat -f %z "$WAD") bytes of WAD)"

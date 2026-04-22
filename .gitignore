@@ -23,3 +23,6 @@ transform/include/redpanda_transform_sdk/
 # docker volumes
 data/
 /dump/
+
+# bench venv (created lazily by `make bench`)
+.venv-bench/

@@ -28,7 +28,7 @@ trap 'rm -f "$FRAMEFILE"' EXIT
 
 $RPK topic consume "$FRAMES_TOPIC" -n 1 --format '%v' > "$FRAMEFILE"
 
-bytes=$(stat -c %s "$FRAMEFILE")
+bytes=$(stat -c %s "$FRAMEFILE" 2>/dev/null || stat -f %z "$FRAMEFILE")
 echo "[smoke] frame size: $bytes bytes"
 
 # First frame has palette dirty -> expect 64773 bytes.
